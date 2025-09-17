@@ -1,12 +1,29 @@
 services:
   - type: web
     name: zomato-reels-server
-    env: node
-    rootDir: server
-    buildCommand: pnpm install --no-frozen-lockfile && pnpm run build
-    startCommand: node dist/index.js
+    runtime: docker
+    plan: starter
+    region: oregon
+    dockerfilePath: ./server/Dockerfile
+    dockerContext: ./server
+    env: docker
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 10000
+      - key: DATABASE_URL
+        value: mongodb+srv://sanjeev081021_db_user:gORaXVZjlbCG2Ck8@dharma.4yapsf2.mongodb.net/zomato-reels?retryWrites=true&w=majority&appName=Dharma
+      - key: JWT_SECRET
+        value: sanjeev081021_db_user
+      - key: IMAGEKIT_PUBLIC_KEY
+        value: public_GesDCJSGTddcXU1vm+idilvqZtY=
+      - key: IMAGEKIT_PRIVATE_KEY
+        value: private_pSdLnEVXZjE8U7hzd20pKS3fZWM=
+      - key: IMAGEKIT_URL_ENDPOINT
+        value: https://ik.imagekit.io/jhw0s6ewo
+      - key: CLIENT_URL
+        value: https://your-client-app.onrender.com
+    scaling:
+      minInstances: 1
+      maxInstances: 3
+    healthCheckPath: /health
+    autoDeploy: true
