@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Streaming Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .video-container {
+            margin: 20px 0;
+        }
+        video {
+            width: 100%;
+            max-width: 600px;
+            height: auto;
+        }
+        .video-info {
+            background: #f5f5f5;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .success {
+            background: #e8f5e8;
+            color: #2e7d32;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Video Streaming Test</h1>
+
+    <div class="video-info">
+        <h3>Testing New ImageKit Streaming Architecture</h3>
+        <p>This page tests the new video streaming system that replaces the old transcoding approach.</p>
+    </div>
+
+    <div id="status" class="success">Loading videos...</div>
+
+    <div id="videos-container"></div>
+
+    <script>
+        async function loadVideos() {
+            try {
+                const response = await fetch('/api/video/videos');
+                const data = await response.json();
+
+                if (data.videos && data.videos.length > 0) {
+                    document.getElementById('status').innerHTML = `<strong>✅ Found ${data.videos.length} videos</strong>`;
+
+                    const container = document.getElementById('videos-container');
+                    container.innerHTML = '';
+
+                    // Show only the first few videos to avoid overwhelming the page
+                    const videosToShow = data.videos.slice(0, 5);
+
+                    videosToShow.forEach((video, index) => {
+                        // Skip .ts files (HLS segments) and show only real videos
+                        if (video.name.endsWith('.ts')) return;
+
+                        const videoDiv = document.createElement('div');
+                        videoDiv.className = 'video-container';
+                        videoDiv.innerHTML = `
+                            <div class="video-info">
+                                <h4>${video.name}</h4>
+                                <p><strong>File ID:</strong> ${video.fileId}</p>
+                                <p><strong>Size:</strong> ${(video.size / 1024 / 1024).toFixed(2)} MB</p>
+                                <p><strong>Direct URL:</strong> <a href="${video.url}" target="_blank">ImageKit URL</a></p>
+                                <p><strong>Secure Streaming URL:</strong> /api/video/stream/${video.secureUrl}</p>
+                            </div>
+                            <video controls preload="metadata" id="video-${index}">
+                                <source src="/api/video/stream/${video.secureUrl}" type="video/mp4">
+                                <source src="${video.url}" type="video/mp4">
+                                Your browser does not support the video tag.
+                            </video>
+                        `;
+                        container.appendChild(videoDiv);
+
+                        // Add error handling for video element
+                        const videoElement = document.getElementById(`video-${index}`);
+                        videoElement.addEventListener('error', function(e) {
+                            console.error('Video error:', e);
+                            const errorDiv = document.createElement('div');
+                            errorDiv.className = 'error';
+                            errorDiv.innerHTML = `❌ Video failed to load: ${e.target.error?.message || 'Unknown error'}`;
+                            videoDiv.appendChild(errorDiv);
+                        });
+
+                        videoElement.addEventListener('loadstart', function() {
+                            console.log('Video loading started for:', video.name);
+                        });
+
+                        videoElement.addEventListener('canplay', function() {
+                            console.log('Video can play:', video.name);
+                        });
+                    });
+                } else {
+                    document.getElementById('status').innerHTML = '<strong>⚠️ No videos found</strong>';
+                }
+            } catch (error) {
+                console.error('Error loading videos:', error);
+                document.getElementById('status').innerHTML = `<strong>❌ Error loading videos: ${error.message}</strong>`;
+                document.getElementById('status').className = 'error';
+            }
+        }
+
+        // Load videos when page loads
+        loadVideos();
+    </script>
+</body>
+</html>
