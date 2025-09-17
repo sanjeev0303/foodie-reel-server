@@ -303,10 +303,8 @@ export class VideoStreamService {
 
             const range = req.headers.range as string | undefined
 
-            // CORS
-            const origin = (req.headers.origin as string) || process.env.CLIENT_URL || 'http://localhost:3000'
-            res.setHeader('Access-Control-Allow-Origin', origin)
-            res.setHeader('Vary', 'Origin')
+            // CORS - Allow all origins
+            res.setHeader('Access-Control-Allow-Origin', '*')
             res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS')
             res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type')
             res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin')

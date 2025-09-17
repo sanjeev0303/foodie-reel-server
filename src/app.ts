@@ -26,10 +26,9 @@ class ExpressApp {
         // Security middleware
         this.app.use(helmet());
 
-        // CORS middleware
+        // CORS middleware - Allow all origins for public API
         this.app.use(cors({
-            // Allow the Next.js client origin - support both 3000 and 3001 ports
-            origin: process.env.CLIENT_URL ? [process.env.CLIENT_URL] : ['http://localhost:3000', 'http://localhost:3001'],
+            origin: true, // Allow all origins
             credentials: true
         }));
 
@@ -79,21 +78,18 @@ class ExpressApp {
         });
 
         // Static file serving for HLS videos (aligned with VideoStreamingService URLs)
-        const clientOrigin = process.env.CLIENT_URL || 'http://localhost:3001'; // Updated to default to 3001
         const hlsStaticDir = path.join(process.cwd(), 'uploads/hls');
 
         // Static file serving for local videos (fallback when ImageKit is unavailable)
         const localVideosDir = path.join(process.cwd(), 'uploads/videos');
 
-        // Local video serving with CORS support
+        // Local video serving with CORS support for all origins
         this.app.use(
             '/uploads/videos',
             express.static(localVideosDir, {
                 setHeaders: (res, filePath) => {
-                    // CORS with credentials
-                    res.setHeader('Access-Control-Allow-Origin', clientOrigin);
-                    res.setHeader('Vary', 'Origin');
-                    res.setHeader('Access-Control-Allow-Credentials', 'true');
+                    // CORS for all origins
+                    res.setHeader('Access-Control-Allow-Origin', '*');
                     res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
                     res.setHeader('Access-Control-Allow-Headers', 'Range');
                     res.setHeader('Accept-Ranges', 'bytes');
@@ -104,12 +100,9 @@ class ExpressApp {
             })
         );
 
-        // Preflight for local video assets
+        // Preflight for local video assets - Allow all origins
         this.app.options('/uploads/videos/*', (req: Request, res: Response) => {
-            const origin = (req.headers.origin as string) || clientOrigin;
-            res.setHeader('Access-Control-Allow-Origin', origin);
-            res.setHeader('Vary', 'Origin');
-            res.setHeader('Access-Control-Allow-Credentials', 'true');
+            res.setHeader('Access-Control-Allow-Origin', '*');
             res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
             res.setHeader('Access-Control-Allow-Headers', 'Range');
             res.status(204).end();
@@ -129,10 +122,8 @@ class ExpressApp {
             hlsProtection,
             express.static(hlsStaticDir, {
                 setHeaders: (res, filePath) => {
-                    // CORS with credentials
-                    res.setHeader('Access-Control-Allow-Origin', clientOrigin);
-                    res.setHeader('Vary', 'Origin');
-                    res.setHeader('Access-Control-Allow-Credentials', 'true');
+                    // CORS for all origins
+                    res.setHeader('Access-Control-Allow-Origin', '*');
                     res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
                     res.setHeader('Access-Control-Allow-Headers', 'Range');
                     res.setHeader('Accept-Ranges', 'bytes');
@@ -153,12 +144,9 @@ class ExpressApp {
             })
         );
 
-        // Preflight for HLS assets (Range header + credentials)
+        // Preflight for HLS assets - Allow all origins
         this.app.options('/uploads/hls/*', (req: Request, res: Response) => {
-            const origin = (req.headers.origin as string) || clientOrigin;
-            res.setHeader('Access-Control-Allow-Origin', origin);
-            res.setHeader('Vary', 'Origin');
-            res.setHeader('Access-Control-Allow-Credentials', 'true');
+            res.setHeader('Access-Control-Allow-Origin', '*');
             res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
             res.setHeader('Access-Control-Allow-Headers', 'Range');
             res.status(204).end();
