@@ -1,10 +1,10 @@
-import express from 'express'
+import express, { Router } from 'express'
 import multer from 'multer'
 import { VideoController } from '../controllers/video.controller'
 import * as path from 'path'
 import * as fs from 'fs'
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // Configure multer for file uploads (20MB limit to match ImageKit)
 const upload = multer({

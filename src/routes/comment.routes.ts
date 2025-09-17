@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Router } from 'express';
 import {
     createComment,
     getComments,
@@ -7,7 +7,7 @@ import {
 } from '../controllers/comment.controller';
 import { authUserMiddleware } from '../middleware/auth.middleware';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // Create a new comment
 router.post('/:foodId', authUserMiddleware, createComment);

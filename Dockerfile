@@ -1,89 +1,79 @@
-# Multi-stage build for production optimization
-# Using Node.js 22 Alpine for better performance and security
+# Alternative Dockerfile with network-friendly approach
 FROM node:22-alpine AS builder
-
-# Update packages for security
-RUN apk update && apk upgrade && rm -rf /var/cache/apk/*
 
 # Set working directory
 WORKDIR /app
 
-# Copy package files
+# Update packages (with retry mechanism)
+RUN apk update --no-cache || true && \
+    apk upgrade --no-cache || true
+
+# Copy package files first (for better layer caching)
 COPY package*.json ./
 COPY pnpm-lock.yaml ./
 
-# Install pnpm globally
-RUN npm install -g pnpm
+# Install pnpm with retry
+RUN npm install -g pnpm --registry https://registry.npmjs.org/ || \
+    npm install -g pnpm --registry https://registry.npm.taobao.org/ || \
+    npm install -g pnpm
 
-# Install all dependencies (including devDependencies for build)
-RUN pnpm install --frozen-lockfile
+# Install dependencies with fallback registries
+RUN pnpm install --frozen-lockfile --registry https://registry.npmjs.org/ || \
+    pnpm install --frozen-lockfile --registry https://registry.npm.taobao.org/ || \
+    pnpm install --frozen-lockfile
 
-# Copy TypeScript configuration and source code
+# Copy source code
 COPY tsconfig.json ./
 COPY src/ ./src/
 
-# Build the application
+# Build application
 RUN pnpm run build
 
 # Production stage
 FROM node:22-alpine AS production
 
-# Update packages and install security updates
-RUN apk update && apk upgrade && apk add --no-cache dumb-init
+# Install dumb-init with retry
+RUN apk update --no-cache || true && \
+    apk add --no-cache dumb-init || apk add dumb-init
 
-# Remove package manager cache to reduce image size
-RUN rm -rf /var/cache/apk/*
-
-# Create app directory
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
 COPY pnpm-lock.yaml ./
 
-# Install pnpm globally
-RUN npm install -g pnpm
+# Install pnpm
+RUN npm install -g pnpm --registry https://registry.npmjs.org/ || \
+    npm install -g pnpm
 
-# Install only production dependencies
-RUN pnpm install --prod --frozen-lockfile && pnpm store prune
+# Install production dependencies only
+RUN pnpm install --prod --frozen-lockfile --registry https://registry.npmjs.org/ || \
+    pnpm install --prod --frozen-lockfile
 
-# Create non-root user for security
+# Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S appuser -u 1001 -G nodejs
 
-# Set proper file permissions and ownership
+# Copy built application
 COPY --from=builder --chown=appuser:nodejs /app/dist ./dist
 
-# Create necessary directories with proper ownership
-RUN mkdir -p /tmp && chmod 1777 /tmp && \
-    chown -R appuser:nodejs /app
-
-# Remove unnecessary packages and clear caches for security
-RUN apk del --purge && rm -rf /var/cache/apk/* /tmp/* /var/tmp/*
+# Set ownership
+RUN chown -R appuser:nodejs /app
 
 # Switch to non-root user
 USER appuser
 
-# Set secure environment variables
+# Environment variables
 ENV NODE_ENV=production \
-    NPM_CONFIG_UPDATE_NOTIFIER=false \
-    NPM_CONFIG_AUDIT=false \
-    DISABLE_OPENCOLLECTIVE=true
+    NPM_CONFIG_UPDATE_NOTIFIER=false
 
-# Add security labels
-LABEL security.non-root=true \
-      security.updated-packages=true \
-      maintainer="zomato-reels-team"
-
-# Expose port (Render uses PORT environment variable, default 5000)
+# Expose port
 EXPOSE 5000
 
-# Health check with proper timeout and URL construction
+# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD node -e "require('http').get('http://localhost:' + (process.env.PORT || 5000) + '/health', {timeout: 5000}, (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))" || exit 1
 
-# Use dumb-init to handle signals properly
+# Start application
 ENTRYPOINT ["dumb-init", "--"]
-
-# Start the application
 CMD ["node", "dist/index.js"]

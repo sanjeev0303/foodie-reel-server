@@ -1,9 +1,9 @@
-import express from 'express'
+import express, { Router } from 'express'
 import multer from 'multer';
 import * as foodController from '../controllers/food.controller'
 import { authFoodPartnerMiddleware, authUserMiddleware } from '../middleware/auth.middleware'
 
-const router = express.Router();
+const router: Router = express.Router();
 
 const upload = multer({
     storage: multer.memoryStorage(),
